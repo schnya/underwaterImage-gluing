@@ -59,34 +59,14 @@ def drawMatchesKnn(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
     cv2.imwrite("drawMatchesKnn.png", img)
 
 
-## コラージュ
-def glue(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
-    """
-            Public Attributes
-    float 	angle
-                計算されたキーポイントの方向（適用しない場合は-1)。
-                これは [0,360) 度の単位で，画像座標系を基準として、つまり時計回りに測られます。
-    int 	class_id
-                オブジェクトクラス
-                (キーポイントが属するオブジェクトによってクラスタリングされる必要がある場合)
-    int 	octave
-                キーポイントが抽出されたオクターブ（ピラミッド層
-    Point2f pt
-                キーポイントの座標
-    float 	response
-                最も強力なキーポイントが選択された応答です。
-                さらにソートやサブサンプリングに使用することができます。
-    float 	size
-                意味のあるキーポイント近傍の直径
-    """
-
+def collage(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
     height, qWidth = imgQuery.shape[:2]
     tHeight, tWidth = imgTrain.shape[:2]
     assert height == tHeight
 
     for idx, m in enumerate(matches):
+        # 座標がぱっと見合うまで1個だけで試してる
         if idx > 0:
-            # 座標がぱっと見合うまで
             break
 
         prev = queryKeyPoints[m[0].queryIdx]
@@ -94,24 +74,10 @@ def glue(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
 
         px, py = {int(v) for v in prev.pt}
         nx, ny = {int(v) for v in next.pt}
-        if py >= ny:
-            # 上方向に進んでるので、同じKeyPointならyの値は後者の方が大きくないとおかしい
-            continue
 
-        print("座標:\n", prev.pt, "\n", next.pt)
         imageArray = np.zeros((height, qWidth + tWidth, 3), np.uint8)
         imageArray[:height, :qWidth] = imgQuery
         imageArray[:height, qWidth:] = imgTrain
-        # py:, px: 以降が、ny:, nx になればいい。
-        # imageArray[py:, px:] = imgTrain[ny:, nx:]
-        # これだと
-        # ValueError: could not broadcast input array
-        # from shape (2180,2608,3) into shape (3137,4055,3)
-        # となるので、以下が正しい
-        # imageArray[py : py + 500, px : px + 500] = imgTrain[
-        #     ny : ny + 500, nx : nx + 500
-        # ]
-        # imageArray[py : py + tHeight - ny, px : px + tWidth - nx] = imgTrain[ny:, nx:]
 
         cv2.drawMarker(
             imageArray,
@@ -123,7 +89,6 @@ def glue(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
             line_type=cv2.LINE_8,
         )
 
-        # 本来重なる？ いや、重ならんぞ？
         cv2.drawMarker(
             imageArray,
             (qWidth + nx, ny),
@@ -135,7 +100,6 @@ def glue(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
         )
 
         cv2.imwrite(f"{prev.pt}-{next.pt}.png", imageArray)
-        # plt.imshow(img3)
 
 
 if __name__ == "__main__":
@@ -155,4 +119,4 @@ if __name__ == "__main__":
         print(f"マッチしたKey Pointsは {len(matches)}個")
 
     drawMatchesKnn(img_query, qKeyPoints, img_train, tKeyPoints, matches)
-    glue(img_query, qKeyPoints, img_train, tKeyPoints, matches)
+    collage(img_query, qKeyPoints, img_train, tKeyPoints, matches)
