@@ -1,27 +1,34 @@
-from cmath import pi
+import string
 import cv2
+from matplotlib import image
 import numpy as np
 import matplotlib.pyplot as plt
 
+DIRNAME: string = "2019_10_01 Aw 1/"
 
-def findMatches(queryImage, trainImage):
-    # Using SIFT to find the keypoints and decriptors in the images
-    sift = cv2.SIFT_create()
-    # find the keypoints and descriptors with SIFT
-    queryImage_kp, queryImage_des = sift.detectAndCompute(
-        cv2.cvtColor(queryImage, cv2.COLOR_BGR2GRAY), None
+
+def findMatches(imgQuery, imgTrain):
+    # Create for extracting keypoints and computing descriptors
+    # using the SIFT algorithm by David G. Lowe.
+    # Read More: Distinctive image features from scale-invariant keypoints. Int. J. Comput. Vision, 60(2):91–110, November 2004.
+    sift = cv2.SIFT.create()
+
+    # Detects keypoints and computes their descriptors
+    qKeyPoints, qDescriptors = sift.detectAndCompute(
+        cv2.cvtColor(imgQuery, cv2.COLOR_BGR2RGB), None
     )
-    trainImage_kp, trainImage_des = sift.detectAndCompute(
-        cv2.cvtColor(trainImage, cv2.COLOR_BGR2GRAY), None
+    tKeyPoints, tDescriptors = sift.detectAndCompute(
+        cv2.cvtColor(imgTrain, cv2.COLOR_BGR2RGB), None
     )
 
-    # Brute-Force matcher with default params
+    ### Brute-Force matcher with default params
     bf = cv2.BFMatcher()
-    initialMatches = bf.knnMatch(queryImage_des, trainImage_des, k=2)
-    print("initialMatches.length:", initialMatches.__len__())
+    initialMatches = bf.knnMatch(qDescriptors, tDescriptors, k=2)
+    # print("initialMatches.length:", initialMatches.__len__()) # 274
 
-    # Apply ratio test and filter out the good matches.
+    ### Apply ratio test and filter out the good matches.
     goodMatches = []
+    imgHeight, imgWidth = imgQuery.shape[:2]
     for m, n in initialMatches:
         """
         type(m), type(n)は <class 'cv2.DMatch'>
@@ -29,46 +36,123 @@ def findMatches(queryImage, trainImage):
         ・distance: 特徴量記述子間の距離．低いほど良い
         ・trainIdx: 学習記述子（参照データ）の記述子のインデックス
         ・queryIdx: クエリ記述子（検索データ）の記述子のインデックス
-        ・imgIdx:   学習画像のインデックス
+        ・imgIdx:   学習画像のインデックス 0
         """
-        if m.distance < 0.75 * n.distance:
+        x, y = {int(v) for v in qKeyPoints[m.queryIdx].pt}
+        if x < imgWidth / 2 and y < imgHeight and m.distance < 0.6 * n.distance:
             goodMatches.append([m])
 
-    return goodMatches, queryImage_kp, trainImage_kp
+    # goodMatches = sorted(goodMatches, key=lambda x: x.distance)
+    return goodMatches, list(qKeyPoints), list(tKeyPoints)
+
+
+def drawMatchesKnn(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
+    # cv2.drawMatchesKnn expects list of lists as matches.
+    params = dict(
+        matchColor=(0, 255, 0),
+        singlePointColor=(0, 0, 255),
+        flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS,
+    )
+    img = cv2.drawMatchesKnn(
+        imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches, None, **params
+    )
+    cv2.imwrite("drawMatchesKnn.png", img)
+
+
+## コラージュ
+def glue(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
+    """
+            Public Attributes
+    float 	angle
+                計算されたキーポイントの方向（適用しない場合は-1)。
+                これは [0,360) 度の単位で，画像座標系を基準として、つまり時計回りに測られます。
+    int 	class_id
+                オブジェクトクラス
+                (キーポイントが属するオブジェクトによってクラスタリングされる必要がある場合)
+    int 	octave
+                キーポイントが抽出されたオクターブ（ピラミッド層
+    Point2f pt
+                キーポイントの座標
+    float 	response
+                最も強力なキーポイントが選択された応答です。
+                さらにソートやサブサンプリングに使用することができます。
+    float 	size
+                意味のあるキーポイント近傍の直径
+    """
+
+    height, qWidth = imgQuery.shape[:2]
+    tHeight, tWidth = imgTrain.shape[:2]
+    assert height == tHeight
+
+    for idx, m in enumerate(matches):
+        if idx > 0:
+            # 座標がぱっと見合うまで
+            break
+
+        prev = queryKeyPoints[m[0].queryIdx]
+        next = trainKeyPoints[m[0].trainIdx]
+
+        px, py = {int(v) for v in prev.pt}
+        nx, ny = {int(v) for v in next.pt}
+        if py >= ny:
+            # 上方向に進んでるので、同じKeyPointならyの値は後者の方が大きくないとおかしい
+            continue
+
+        print("座標:\n", prev.pt, "\n", next.pt)
+        imageArray = np.zeros((height, qWidth + tWidth, 3), np.uint8)
+        imageArray[:height, :qWidth] = imgQuery
+        imageArray[:height, qWidth:] = imgTrain
+        # py:, px: 以降が、ny:, nx になればいい。
+        # imageArray[py:, px:] = imgTrain[ny:, nx:]
+        # これだと
+        # ValueError: could not broadcast input array
+        # from shape (2180,2608,3) into shape (3137,4055,3)
+        # となるので、以下が正しい
+        # imageArray[py : py + 500, px : px + 500] = imgTrain[
+        #     ny : ny + 500, nx : nx + 500
+        # ]
+        # imageArray[py : py + tHeight - ny, px : px + tWidth - nx] = imgTrain[ny:, nx:]
+
+        cv2.drawMarker(
+            imageArray,
+            (px, py),
+            (255, 0, 255),
+            markerType=cv2.MARKER_CROSS,
+            markerSize=40,
+            thickness=5,
+            line_type=cv2.LINE_8,
+        )
+
+        # 本来重なる？ いや、重ならんぞ？
+        cv2.drawMarker(
+            imageArray,
+            (qWidth + nx, ny),
+            (255, 0, 255),
+            markerType=cv2.MARKER_CROSS,
+            markerSize=40,
+            thickness=5,
+            line_type=cv2.LINE_8,
+        )
+
+        cv2.imwrite(f"{prev.pt}-{next.pt}.png", imageArray)
+        # plt.imshow(img3)
 
 
 if __name__ == "__main__":
-    print(cv2.__version__)
-    dirname = "OneDrive_1_6-28-2022/"
+    # Loads an image from a file.
+    img_query = cv2.imread(DIRNAME + "PA011551.jpg")  # query
+    img_train = cv2.imread(DIRNAME + "PA011552.jpg")  # train
 
-    # queryImage and trainImage
-    img1 = cv2.imread(dirname + "comp_PA011324.jpg")  # query
-    img2 = cv2.imread(dirname + "comp_PA011325.jpg")  # train
+    ### Finding matches between the 2 images and their keypoints
+    matches, qKeyPoints, tKeyPoints = findMatches(img_query, img_train)
+    print(f"Key Points: {len(qKeyPoints)}個と{len(tKeyPoints)}個中、")
 
-    # Finding matches between the 2 images and their keypoints
-    matches, img1_kp, img2_kp = findMatches(img1, img2)
-    # If less than 4 matches found, exit the code.
+    ### If less than 4 matches found, exit the code.
     if len(matches) < 4:
         print("\nNot enough matches found between the images.\n")
         exit(0)
+    else:
+        print(f"マッチしたKey Pointsは {len(matches)}個")
 
-    print(img1_kp.__len__())
-    img1_kp = sorted(img1_kp, key=lambda f: f.angle)[:75]
-    img2_kp = sorted(img2_kp, key=lambda f: f.angle)[:75]
-
-    for index, (one, two) in enumerate(zip(img1_kp, img2_kp)):
-        print(index)
-        print("angle", one.angle, two.angle)
-        print("pt", one.pt, two.pt)
-        print("responose", one.response, two.response)
-        print("size", one.size, two.size)
-        print("- - - - - - - - - -")
-
-    # cv2.drawMatchesKnn expects list of lists as matches.
-    draw_params = dict(matchColor=(0, 255, 0), singlePointColor=(255, 0, 0), flags=0)
-
-    img3 = cv2.drawMatchesKnn(
-        img1, img1_kp, img2, img2_kp, matches, None, **draw_params
-    )
-    plt.imshow(img3)
-    plt.show()
+    drawMatchesKnn(img_query, qKeyPoints, img_train, tKeyPoints, matches)
+    glue(img_query, qKeyPoints, img_train, tKeyPoints, matches)
