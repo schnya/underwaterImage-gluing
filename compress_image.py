@@ -1,26 +1,20 @@
-from PIL import Image
-from io import BytesIO
-import glob
-import os
+import cv2
 
-# コンフィグ
-COMPRESS_QUALITY = 50  # 圧縮のクオリティ
 
-# JPEG形式とPNG形式の画像ファイルを用意
-dir = "2019_10_01 Aw 1/"
-files = glob.glob(dir + "PA*")
-for file_path in files:
-    #############################
-    #     JPEG形式の圧縮処理     #
-    #############################
-    # ファイル名を取得
-    filename = os.path.basename(file_path)
-    with open(file_path, "rb") as inputfile:
-        # バイナリモードファイルをPILイメージで取得
-        im = Image.open(inputfile)
-        # JPEG形式の圧縮を実行
-        im_io = BytesIO()
-        im.save(im_io, "jpeg", quality=COMPRESS_QUALITY)
-    with open(dir + "comp_" + filename, mode="wb") as outputfile:
-        # 出力ファイル(comp_png_image.png)に書き込み
-        outputfile.write(im_io.getvalue())
+def imgEncodeDecode(filename, quality=50):
+    """
+    入力された画像リストを圧縮する
+    [in]  filename: 入力画像ファイルパス
+    [in]  quality:  圧縮する品質 (1-100)
+    [out] out_imgs: 出力画像リスト
+    """
+
+    img = cv2.imread(filename)
+    _, _, ch = img.shape
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]
+    result, encimg = cv2.imencode(".jpg", img, encode_param)
+    if False == result:
+        print("could not encode image!")
+        exit()
+
+    return cv2.imdecode(encimg, ch)
