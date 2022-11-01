@@ -15,19 +15,20 @@ PARAMS = dict(
 
 
 def drawMatches(current_img, queryKeyPoints, new_img, trainKeyPoints, matches):
+    K = 10
     height, width, _ = current_img.shape
-    imageArray = np.zeros((height, width + 5 + 4000, 3), np.uint8)
+    imageArray = np.zeros((height + 1000, width + 1000 + 4000, 3), np.uint8)
     imageArray[:height, :width] = current_img
-    imageArray[height - 3000 : height, width + 5 :] = new_img
+    imageArray[height - 2000 : height + 1000, width + 1000 :] = new_img
 
-    for m in matches[:5]:
+    for m in matches[:K]:
         m = m[0]
 
         px, py = queryKeyPoints[m.queryIdx].pt
         px, py = int(px), int(py)
 
         nx, ny = trainKeyPoints[m.trainIdx].pt
-        nx, ny = width + 5 + int(nx), height - 3000 + int(ny)
+        nx, ny = width + 1000 + int(nx), height - 2000 + int(ny)
 
         cv2.drawMarker(imageArray, (px, py), (255, 0, 255), **PARAMS)
         cv2.drawMarker(imageArray, (nx, ny), (255, 0, 255), **PARAMS)
@@ -35,7 +36,7 @@ def drawMatches(current_img, queryKeyPoints, new_img, trainKeyPoints, matches):
         cv2.circle(imageArray, (nx, ny), 4, (255, 255, 0), 2)
         cv2.line(imageArray, (px, py), (nx, ny), (0, 255, 0), 2)
 
-    cv2.imwrite(f"drawMaches.png", imageArray)
+    cv2.imwrite(f"drawMaches_{K}.jpg", imageArray)
 
 
 if __name__ == "__main__":

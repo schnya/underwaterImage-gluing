@@ -30,7 +30,7 @@ def collage(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
 
     # if base_h > y + img_h:
     #     return imgQuery
-    height, width = y + img_h, x + base_w
+    height, width = y + img_h, max(base_w, x + img_w)
     imageArray = np.zeros((height, width, 3), np.uint8)
 
     print(f"{y} + {img_h}, {x} + {img_w} = {imageArray.shape}")
@@ -53,7 +53,7 @@ def fetchMatches(imgQuery, file_path):
 
 
 if __name__ == "__main__":
-    n = 9
+    n = 10
     filenames = sorted(glob.glob(f"{DIRNAME}/*.JPG"), reverse=True)[:n]
 
     output = imgEncodeDecode(filenames[0])
