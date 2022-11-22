@@ -1,14 +1,24 @@
 import cv2
 import glob
+import math
 import numpy as np
 from datetime import datetime
 
 from imageCompression import imgEncodeDecode
 
-DIRNAME: str = "./2562_06_12RachaYai"
+DIRNAME: str = "./2019_10_01Aw1"
 sift = cv2.SIFT.create()
-bf = cv2.BFMatcher()
+bf = cv2.BFMatcher()  #  別に外付けしてるから遅くなったわけじゃないっぽい
 bgr2rgb = cv2.COLOR_BGR2RGB
+
+
+def getDegree(y: float, x: float, y2: float, x2: float) -> float:
+    a = np.array([y, x])
+    b = np.array([y2, x2])
+    vec = b - a
+
+    # 逆正接; 返り値は-piからpi（-180度から180度）の間
+    return np.degrees(np.arctan2(vec[0], vec[1]))
 
 
 def collage(imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
@@ -48,21 +58,29 @@ def fetchMatches(imgQuery, file_path):
     imgTrain = imgEncodeDecode(file_path)
     q_kp, q_des = sift.detectAndCompute(cv2.cvtColor(imgQuery, bgr2rgb), None)
     t_kp, t_des = sift.detectAndCompute(cv2.cvtColor(imgTrain, bgr2rgb), None)
+    print("Start knnMatch:", datetime.now())
     matches = bf.knnMatch(q_des, t_des, k=2)
+    print("End knnMatch:", datetime.now())
     matches = sorted(matches, key=lambda x: x[0].distance)
 
-    return imgTrain, matches, q_kp, t_kp
+    # これがどれくらい意味をなしてるのかは分かってない。
+    # でも最頻値はそこまで影響しなさそう
+    # good = []
+    # for m, n in matches:
+    #     if m.distance < 0.75 * n.distance:
+    #         good.append([m])
+
+    return imgTrain, matches[:20], q_kp, t_kp
 
 
 if __name__ == "__main__":
-    n = 10
-    filenames = sorted(glob.glob(f"{DIRNAME}/*.JPG"), reverse=True)[:n]
+    N = 10
+    today = datetime.now().isoformat().split("T")[0]
+    filenames = sorted(glob.glob(f"{DIRNAME}/*.JPG"), reverse=True)[:N]
 
     output = imgEncodeDecode(filenames[0])
     for name in filenames[1:]:
         train_img, matches, qKeyPoints, tKeyPoints = fetchMatches(output, name)
         output = collage(output, qKeyPoints, train_img, tKeyPoints, matches)
 
-    today = datetime.now()
-    today = today.isoformat().split("T")[0]
-    cv2.imwrite(f"{today}|n={n}|{DIRNAME}.jpg", output)
+    cv2.imwrite(f"output/{today}|n={N}|{DIRNAME}.jpg", output)
