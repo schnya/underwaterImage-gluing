@@ -1,9 +1,9 @@
 import cv2
 
 
-def imgEncodeDecode(filename, quality=50):
+def compressInputImg(filename, quality=50):
     """
-    入力された画像リストを圧縮する
+    入力された画像ファイルパスを基に圧縮された画像を返す
     [in]  filename: 入力画像ファイルパス
     [in]  quality:  圧縮する品質 (1-100)
     [out] out_imgs: 出力画像リスト

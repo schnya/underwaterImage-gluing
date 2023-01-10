@@ -8,9 +8,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from drawMatches import drawMatches
+from fetchMatches import fetchMatches
 
-from imageCompression import imgEncodeDecode
-from main import fetchMatches, getDegree
+from imageCompression import compressInputImg
 
 sift = cv2.SIFT.create()
 bf = cv2.BFMatcher()
@@ -57,6 +57,15 @@ def obtainMode(input_df, col: str):
     up = mode + 5
     output_df = output_df[col][(bottom <= output_df[col]) & (output_df[col] <= up)]
     return output_df.index
+
+def getDegree(y: float, x: float, y2: float, x2: float) -> float:
+    a = np.array([y, x])
+    b = np.array([y2, x2])
+    vec = b - a
+
+    # 逆正接; 返り値は-piからpi（-180度から180度）の間
+    return np.degrees(np.arctan2(vec[0], vec[1]))
+    
 
 
 def caluculate(m, q_kp, t_kp):
@@ -118,20 +127,20 @@ if __name__ == "__main__":
     today = datetime.now().isoformat().split("T")[0]
     filenames = sorted(glob.glob(f"{dir_name}/*.JPG"), reverse=True)[:n]
 
-    output = imgEncodeDecode(filenames[0])
+    output = compressInputImg(filenames[0])
     for name in filenames[1:]:
-        img_t, matches, q_kp, t_kp = fetchMatches(output, name)
+        qKeyPoints, train_img, tKeyPoints, matches = fetchMatches(output, name)
         print("何もしなかった場合")
-        print("要素数:", len(matches))
-        collage(q_kp, t_kp, matches)
-        drawMatches(output, q_kp, img_t, t_kp, matches, dir_name)
-        df = makeDataFrame(q_kp, t_kp, matches)
+        print("要素数:", len(train_img))
+        collage(tKeyPoints, matches, train_img)
+        drawMatches(output, tKeyPoints, qKeyPoints, matches, train_img, dir_name)
+        df = makeDataFrame(tKeyPoints, matches, train_img)
 
         print("- - - - - - - - - - - - - -")
         print("角度の最頻値±5°までを取得した場合")
         index = obtainMode(df, "degree")
         print("要素数:", len(index))
-        _matches = [matches[i] for i in index]
-        makeDataFrame(q_kp, t_kp, _matches, after=True)
+        _matches = [train_img[i] for i in index]
+        makeDataFrame(tKeyPoints, matches, _matches, after=True)
 
-        drawMatches(output, q_kp, img_t, t_kp, _matches, dir_name)
+        drawMatches(output, tKeyPoints, qKeyPoints, matches, _matches, dir_name)
