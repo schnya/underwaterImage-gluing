@@ -1,8 +1,10 @@
 import numpy as np
 
+from port import Port
 
-class Driver:
-    def measureDistanceTraveledByKeyPoint(self, matches, q_kp, t_kp, K=5) -> tuple[int, int]:
+
+class MeanDriver(Port):
+    def measureDistanceTraveledByKeyPoint(self, matches, q_kp, t_kp, K=50) -> tuple[int, int]:
         x, y = 0, 0
         for m in matches[:K]:
             m = m[0]
@@ -28,25 +30,25 @@ class Driver:
 
 
 if __name__ == "__main__":
-    driver = Driver()
+    driver = MeanDriver()
 
     bH, bW = 4050, 3100
     oH, oW = 4000, 3000
     y, x = -200, 15
     new_img = driver.createEmptyImage(bH, bW, oH, oW, x, y)
     height, width, _ = new_img.shape
-    assert (height == 4200 and width == 3100)
+    assert (height == 4250 and width == 3100)
 
     bH, bW = 5050, 4100
     oH, oW = 4000, 3000
     y, x = -200, 15
     new_img = driver.createEmptyImage(bH, bW, oH, oW, x, y)
     height, width, _ = new_img.shape
-    assert (height == 5050 and width == 4100)
+    assert (height == 5250 and width == 4100)
 
     bH, bW = 5050, 4100
     oH, oW = 4000, 3000
     y, x = -2200, -1500
     new_img = driver.createEmptyImage(bH, bW, oH, oW, x, y)
     height, width, _ = new_img.shape
-    assert (height == 6200 and width == 4500)
+    assert (height == 7250 and width == 5600)

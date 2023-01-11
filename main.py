@@ -3,7 +3,9 @@ import cv2
 import glob
 import numpy as np
 from datetime import datetime
-from driver import Driver
+from angleModeDriver import AngleModeDriver
+from drawMatches import drawMatches
+from meanDriver import MeanDriver, Port
 from fetchMatches import fetchMatches
 
 from imageCompression import compressInputImg
@@ -13,6 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dir", help="ディレクトリ名")
 parser.add_argument("-n", "--count", default=10, type=int, help="使う画像の枚数")
 parser.add_argument("-s", "--skip",  default=0,  type=int, help="スキップする画像の枚数")
+parser.add_argument("-a", "--angle", action="store_true")
 
 
 class App:
@@ -20,27 +23,28 @@ class App:
     now: str
     n: int
     s: int
-    driver: Driver
+    calculate_port: Port
 
-    def __init__(self, args: argparse.Namespace) -> None:
+    def __init__(self, args: argparse.Namespace, port=MeanDriver()) -> None:
         self.now = datetime.now().strftime("%m%d_%H時%M")
         self.dir_name = args.dir
         self.n = args.count
         self.s = args.skip
-        self.driver = Driver()
+        self.calculate_port = port
 
     def generateListOfImgPath(self) -> list[str]:
         return sorted(glob.glob(f"./{self.dir_name}/*.JPG"))[self.s:self.s + self.n]
 
     def mosaic(self, imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
+        print('matchのdistance', matches[0].distance)
         qY, qX, _ = imgQuery.shape
         tY, tX, _ = imgTrain.shape
         print('Query Size', qY, qX, 'Train size', tY, tX)
 
-        x, y = self.driver.measureDistanceTraveledByKeyPoint(
+        x, y = self.calculate_port.measureDistanceTraveledByKeyPoint(
             matches, queryKeyPoints, trainKeyPoints)
 
-        new_img = self.driver.createEmptyImage(qY, qX, tY, tX, x, y)
+        new_img = self.calculate_port.createEmptyImage(qY, qX, tY, tX, x, y)
 
         if x >= 0 and y >= 0:
             new_img[:qY, :qX] = imgQuery
@@ -66,7 +70,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     assert (args.dir)
 
-    app = App(args)
+    app = App(args, port=AngleModeDriver()) if args.angle else App(args)
     img_paths = app.generateListOfImgPath()
     output = compressInputImg(img_paths[0])
     for path in img_paths[1:]:
@@ -74,5 +78,11 @@ if __name__ == "__main__":
         q_key_point, t_key_point, matches = fetchMatches(output, t_img)
         output = app.mosaic(output, q_key_point, t_img, t_key_point, matches)
 
+    # if args.angle:
+    #     drawMatches(output, q_key_point, t_img,
+    #                 t_key_point, app.calculate_port.matches, app.dir_name)
+    # else:
+    #     drawMatches(output, q_key_point, t_img,
+    #                 t_key_point, matches, app.dir_name)
     app.save(output)
     exit()
