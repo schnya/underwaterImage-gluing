@@ -3,6 +3,7 @@ import cv2
 import glob
 import numpy as np
 from datetime import datetime
+from driver import Driver
 from fetchMatches import fetchMatches
 
 from imageCompression import compressInputImg
@@ -19,49 +20,42 @@ class App:
     now: str
     n: int
     s: int
+    driver: Driver
 
     def __init__(self, args: argparse.Namespace) -> None:
         self.now = datetime.now().strftime("%m%d_%H時%M")
         self.dir_name = args.dir
         self.n = args.count
         self.s = args.skip
+        self.driver = Driver()
 
-    def stitch(self, imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
-        base_h, base_w, _ = imgQuery.shape
-        img_h, img_w, _ = imgTrain.shape
+    def generateListOfImgPath(self) -> list[str]:
+        return sorted(glob.glob(f"./{self.dir_name}/*.JPG"))[self.s:self.s + self.n]
 
-        x, y, K = 0, 0, 5
-        for m in matches[:K]:
-            m = m[0]
+    def mosaic(self, imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
+        qY, qX, _ = imgQuery.shape
+        tY, tX, _ = imgTrain.shape
+        print('Query Size', qY, qX, 'Train size', tY, tX)
 
-            px, py = queryKeyPoints[m.queryIdx].pt
-            px, py = int(px), int(py)
+        x, y = self.driver.measureDistanceTraveledByKeyPoint(
+            matches, queryKeyPoints, trainKeyPoints)
 
-            nx, ny = trainKeyPoints[m.trainIdx].pt
-            nx, ny = int(nx), int(ny)
-
-            x += px - nx
-            y += py - ny
-        x, y = int(x / K), int(y / K)
-
-        height, width = max(base_h, abs(y) + img_h), max(base_w, abs(x) + img_w)
-        imageArray = np.zeros((height, width, 3), np.uint8)
-        print(f"{y} + {img_h}, {x} + {img_w} = {imageArray.shape}")
+        new_img = self.driver.createEmptyImage(qY, qX, tY, tX, x, y)
 
         if x >= 0 and y >= 0:
-            imageArray[:height, :width] = imgQuery
-            imageArray[y: y + img_h, x: x + img_w] = imgTrain
+            new_img[:qY, :qX] = imgQuery
+            new_img[y: y + tY, x: x + tX] = imgTrain
         elif x >= 0 and y < 0:
-            imageArray[abs(y): abs(y) + base_h, :width] = imgQuery   
-            imageArray[:img_h, x: x + img_w] = imgTrain
+            new_img[abs(y):, :qX] = imgQuery
+            new_img[:tY, x: x + tX] = imgTrain
         elif x < 0 and y >= 0:
-            imageArray[:height, abs(x): abs(x) + img_w] = imgQuery
-            imageArray[y: y + img_h, :img_w] = imgTrain
+            new_img[:qY, abs(x):] = imgQuery
+            new_img[y: y + tY, :tX] = imgTrain
         elif x < 0 and y < 0:
-            imageArray[abs(y): abs(y) + img_h, abs(x): abs(x) + img_w] = imgQuery
-            imageArray[:img_h, :img_w] = imgTrain
-        
-        return imageArray
+            new_img[abs(y):, abs(x):] = imgQuery
+            new_img[:tY, :tX] = imgTrain
+
+        return new_img
 
     def save(self, img) -> None:
         cv2.imwrite(
@@ -72,15 +66,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
     assert (args.dir)
 
-    imgPaths = sorted(
-        glob.glob(f"./{args.dir}/*.JPG"))[args.skip:args.skip+args.count]
-    output = compressInputImg(imgPaths[0])
-
     app = App(args)
-    for path in imgPaths[1:]:
+    img_paths = app.generateListOfImgPath()
+    output = compressInputImg(img_paths[0])
+    for path in img_paths[1:]:
         t_img = compressInputImg(path)
         q_key_point, t_key_point, matches = fetchMatches(output, t_img)
-        output = app.stitch(output, q_key_point, t_img, t_key_point, matches)
+        output = app.mosaic(output, q_key_point, t_img, t_key_point, matches)
 
     app.save(output)
     exit()
