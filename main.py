@@ -36,10 +36,14 @@ class App:
         return sorted(glob.glob(f"./{self.dir_name}/*.JPG"))[self.s:self.s + self.n]
 
     def mosaic(self, imgQuery, queryKeyPoints, imgTrain, trainKeyPoints, matches):
-        print('matchのdistance', matches[0].distance)
+        # distanceデカい奴はスキップしてみたけどあんま意味なさげ
+        # print('最もmatchのdistance', matches[0][0].distance)
+        # if matches[0][0].distance > 100:
+        #     return imgQuery
+
         qY, qX, _ = imgQuery.shape
         tY, tX, _ = imgTrain.shape
-        print('Query Size', qY, qX, 'Train size', tY, tX)
+        # print('Query Size', qY, qX, 'Train size', tY, tX)
 
         x, y = self.calculate_port.measureDistanceTraveledByKeyPoint(
             matches, queryKeyPoints, trainKeyPoints)

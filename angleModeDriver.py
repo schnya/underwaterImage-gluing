@@ -17,12 +17,12 @@ class AngleModeDriver(Port):
 
         mode = degree.mode()[0]
         bottom, up = mode - rad, mode + rad
-        print("角度の最頻値:", mode)
+        # print("角度の最頻値:", mode)
 
         output_df = degree[(bottom <= degree) & (degree <= up)]
         index = output_df.index
 
-        print("要素数:", len(index))
+        # print("要素数:", len(index))
         return [matches[i] for i in index]
 
     def _saveFig(self, df):
@@ -63,20 +63,20 @@ class AngleModeDriver(Port):
     def measureDistanceTraveledByKeyPoint(self, matches, q_kp, t_kp) -> tuple[int, int]:
         df = self._hoge(matches, q_kp, t_kp)
         x, y = int(df["x"].mean()), int(df["y"].mean())
-        print('全部の平均 y:', y, 'x:', x)
+        # print('全部の平均 y:', y, 'x:', x)
         
         self.matches = self._measureAngleMode(df, matches)
         df = self._hoge(self.matches, q_kp, t_kp)
 
         x, y = int(df["x"].mean()), int(df["y"].mean())
-        print('最頻値に絞った平均 y:', y, 'x:', x)
+        # print('最頻値に絞った平均 y:', y, 'x:', x)
         return x, y
 
     def createEmptyImage(self, base_height, base_width, overlay_height, overlay_width, x, y):
         height = max([base_height, base_height - y, abs(y) + overlay_height])
         width = max([base_width, base_width - x, abs(x) + overlay_width])
         imgArr = np.zeros((height, width, 3), np.uint8)
-        print('🆕 Image Size:', imgArr.shape)
+        # print('🆕 Image Size:', imgArr.shape)
         return imgArr
 
 
