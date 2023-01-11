@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
-from port import Port
+from port.port import Port
 
 COLUMNS = ["x", "y", "degree"]
 def now(): return datetime.now().strftime("%m%d_%H時%M")

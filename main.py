@@ -1,12 +1,12 @@
 import argparse
 import cv2
 import glob
-import numpy as np
 from datetime import datetime
-from angleModeDriver import AngleModeDriver
+from driver.angleModeDriver import AngleModeDriver
+from driver.meanDriver import MeanDriver
 from drawMatches import drawMatches
-from meanDriver import MeanDriver, Port
 from fetchMatches import fetchMatches
+from port.port import Port
 
 from imageCompression import compressInputImg
 
@@ -28,7 +28,7 @@ class App:
     def __init__(self, args: argparse.Namespace, port=MeanDriver()) -> None:
         self.now = datetime.now().strftime("%m%d_%H時%M")
         self.dir_name = args.dir
-        self.n = args.count
+        self.n = args.count + 1
         self.s = args.skip
         self.calculate_port = port
 
@@ -77,7 +77,8 @@ if __name__ == "__main__":
     app = App(args, port=AngleModeDriver()) if args.angle else App(args)
     img_paths = app.generateListOfImgPath()
     output = compressInputImg(img_paths[0])
-    for path in img_paths[1:]:
+    for idx, path in enumerate(img_paths[1:]):
+        print(idx)
         t_img = compressInputImg(path)
         q_key_point, t_key_point, matches = fetchMatches(output, t_img)
         output = app.mosaic(output, q_key_point, t_img, t_key_point, matches)
