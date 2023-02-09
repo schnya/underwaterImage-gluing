@@ -12,3 +12,5 @@ pip3 install -r requirements.txt
 ```
 python3 main.py
 ```
+
+D. Lowe. Distinctive image features from scale-invariant keypoints. International Journal of Computer Vision, 60(2):91–110, 2004

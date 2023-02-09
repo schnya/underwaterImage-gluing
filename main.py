@@ -5,7 +5,6 @@ from datetime import datetime
 from driver.angleModeDriver import AngleModeDriver
 from driver.meanDriver import MeanDriver
 from drawMatches import drawMatches
-from fetchMatches import fetchMatches
 from port.port import Port
 
 from imageCompression import compressInputImg
@@ -31,6 +30,9 @@ class App:
         self.n = args.count + 1
         self.s = args.skip
         self.calculate_port = port
+
+    def fetchMatches(self, output, t_img):
+        return self.calculate_port.fetchMatches(output, t_img)
 
     def generateListOfImgPath(self) -> list[str]:
         return sorted(glob.glob(f"./{self.dir_name}/*.JPG"))[self.s:self.s + self.n]
@@ -78,16 +80,13 @@ if __name__ == "__main__":
     img_paths = app.generateListOfImgPath()
     output = compressInputImg(img_paths[0])
     for idx, path in enumerate(img_paths[1:]):
-        print(idx)
         t_img = compressInputImg(path)
-        q_key_point, t_key_point, matches = fetchMatches(output, t_img)
+        q_key_point, t_key_point, matches = app.fetchMatches(output, t_img)
         output = app.mosaic(output, q_key_point, t_img, t_key_point, matches)
 
-    # if args.angle:
-    #     drawMatches(output, q_key_point, t_img,
-    #                 t_key_point, app.calculate_port.matches, app.dir_name)
-    # else:
-    #     drawMatches(output, q_key_point, t_img,
-    #                 t_key_point, matches, app.dir_name)
+    if args.angle:
+        matches = app.calculate_port.matches
+
+    drawMatches(output, q_key_point, t_img, t_key_point, matches, app.dir_name)
     app.save(output)
     exit()

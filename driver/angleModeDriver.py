@@ -2,6 +2,7 @@ from datetime import datetime
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 from port.port import Port
 
@@ -26,19 +27,10 @@ class AngleModeDriver(Port):
         return [matches[i] for i in index]
 
     def _saveFig(self, df):
-        # sns.pairplot(df).savefig(
-        #     f"output/p{now()}airplot{'_after' if after else ''}|{dir_name}.png"
-        # )
-        # sns.displot(df.degree).savefig(
-        #     f"output/d{dir_name}isplot_degree{'_after' if after else ''}|{datetime.now()}.png"
-        # )
-        # sns.boxplot(df.y).get_figure().savefig("output/boxplot_y.png")
-        # index = obtainMode(df, "degree").index
-        # sns.displot(output_x).savefig("output/displot_x-detected.png")
-        # sns.displot(output_y).savefig("output/displot_y-detected.png")
-        # sns.boxplot(output_x).get_figure().savefig("output/boxplot_x-detected.png")
-        # sns.boxplot(output_y).get_figure().savefig("output/boxplot_y-detected.png")
-        pass
+        sns.displot(df.degree).savefig(
+            f"output/displot_degree|{datetime.now()}.png"
+        )
+        plt.close()
 
     def _hoge(self, matches, q_kp, t_kp, K=50):
         df = pd.DataFrame(columns=COLUMNS)
@@ -62,11 +54,13 @@ class AngleModeDriver(Port):
 
     def measureDistanceTraveledByKeyPoint(self, matches, q_kp, t_kp) -> tuple[int, int]:
         df = self._hoge(matches, q_kp, t_kp)
-        x, y = int(df["x"].mean()), int(df["y"].mean())
+        # self._saveFig(df)
+        # x, y = int(df["x"].mean()), int(df["y"].mean())
         # print('全部の平均 y:', y, 'x:', x)
         
         self.matches = self._measureAngleMode(df, matches)
         df = self._hoge(self.matches, q_kp, t_kp)
+        # self._saveFig(df)
 
         x, y = int(df["x"].mean()), int(df["y"].mean())
         # print('最頻値に絞った平均 y:', y, 'x:', x)
